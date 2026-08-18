@@ -1,17 +1,19 @@
-Villa 86 glass UI v2
+Villa 86 glass UI v2.1 fixed
 
-Updated files to upload to your test repository:
-- index.htm (replace)
-- custom-ui.css (replace)
-- custom-ui.js (replace)
-- script_general.js (replace)
-- script_mobile.js (replace)
+Fix in this build:
+- Removed the invalid lockedOrientation:null property that caused 3DVista's parser error.
+- Mobile is no longer explicitly forced to landscape by that player property.
 
-What changed in v2:
-- Menu is closed by default.
-- Top-right glass menu opens a dropdown panel.
-- Each floor now has its own expandable dropdown list of scenes.
-- Bottom thumbnail dock appears only after Open Virtual Tour / Continue Watching.
-- Hero / welcome overlay disappears once tour mode is active.
-- Forced landscape orientation on mobile was removed.
-- Legacy 3DVista duplicated thumbnail UI remains hidden.
+Upload/replace these files in the test repository:
+- index.htm
+- custom-ui.css
+- custom-ui.js
+- script_general.js
+- script_mobile.js
+
+Behavior:
+- Menu starts closed.
+- Each floor has an expandable scene list.
+- Welcome/hero overlay disappears after entering tour mode.
+- Custom bottom thumbnail dock appears only after Open Virtual Tour / Continue Watching.
+- Original duplicated 3DVista thumbnail UI remains hidden.
