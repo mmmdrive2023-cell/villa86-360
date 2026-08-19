@@ -71,3 +71,32 @@
 #IconButton_062A8830_1140_E215_419D_3439F16CCB3E_ {
   border-radius:999px;
 }
+
+
+/* Welcome / intro glass treatment */
+#Container_72F07872_4E67_B56E_41AF_74B31EEAE071 [tdvlayer="filter"]{
+  -webkit-backdrop-filter: blur(24px) saturate(160%) !important;
+  backdrop-filter: blur(24px) saturate(160%) !important;
+}
+#Container_72F07872_4E67_B56E_41AF_74B31EEAE071,
+#Button_750AB6F8_4E6A_FD5A_41B8_3B00F4A4F566,
+#Button_705138BD_4E66_F5D5_41C7_67A1B6CC770D{
+  overflow:hidden;
+}
+#Label_70F181D7_4E6B_7756_4140_1349632BD541 [tdvlayer="content"],
+#Label_73018A04_4E6E_F4AA_41BD_560BBAF3832B [tdvlayer="content"],
+#Label_7316602C_4E69_74FA_41B0_7284F8EBFA04 [tdvlayer="content"],
+#Button_750AB6F8_4E6A_FD5A_41B8_3B00F4A4F566 [tdvlayer="content"],
+#Button_705138BD_4E66_F5D5_41C7_67A1B6CC770D [tdvlayer="content"]{
+  -webkit-font-smoothing:antialiased;
+  text-rendering:geometricPrecision;
+  letter-spacing:0.01em;
+}
+#IconButton_062A8830_1140_E215_419D_3439F16CCB3E{
+  width:40px !important;
+  height:40px !important;
+  min-width:36px !important;
+  min-height:36px !important;
+  max-width:40px !important;
+  max-height:40px !important;
+}
