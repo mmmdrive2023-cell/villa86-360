@@ -20,3 +20,54 @@
 #ThumbnailGrid_4DED530D_5EE8_7957_41AC_FBA957C6B264 [tdvlayer="content"]{
  -webkit-font-smoothing:antialiased;text-rendering:geometricPrecision;
 }
+
+
+/* Premium intro + info refinements */
+:root{--villa-glass-saturation:155%;}
+#Container_062A782F_1140_E20B_41AF_B3E5DE341773 [tdvlayer="filter"],
+#Container_062A2830_1140_E215_41AA_EB25B7BD381C [tdvlayer="filter"],
+#Container_22BBC2F4_3075_D173_41B4_71F7A3560C34 [tdvlayer="filter"],
+#Container_22BBD2F4_3075_D173_41B4_8504C593E6BF [tdvlayer="filter"],
+#Container_4F2B55F4_4EAF_9F6A_41A0_92F7676F7469 [tdvlayer="filter"],
+#Container_4F2B55F4_4EAF_9F6A_41B2_AF8AEFB3B7AB [tdvlayer="filter"],
+#Container_22BBC2F4_3075_D173_41B4_71F7A3560C34_mobile [tdvlayer="filter"],
+#Container_22BBD2F4_3075_D173_41B4_8504C593E6BF_mobile [tdvlayer="filter"],
+#Button_73A859D1_4E6F_77AA_41C2_D74B6095EB78 [tdvlayer="filter"],
+#Button_062AF830_1140_E215_418D_D2FC11B12C47 [tdvlayer="filter"],
+#IconButton_062A8830_1140_E215_419D_3439F16CCB3E [tdvlayer="filter"]{
+  -webkit-backdrop-filter: blur(24px) saturate(var(--villa-glass-saturation)) !important;
+  backdrop-filter: blur(24px) saturate(var(--villa-glass-saturation)) !important;
+}
+#Container_062A782F_1140_E20B_41AF_B3E5DE341773,
+#Container_062A2830_1140_E215_41AA_EB25B7BD381C,
+#Button_73A859D1_4E6F_77AA_41C2_D74B6095EB78,
+#Button_062AF830_1140_E215_418D_D2FC11B12C47,
+#IconButton_062A8830_1140_E215_419D_3439F16CCB3E,
+#Container_22BBC2F4_3075_D173_41B4_71F7A3560C34,
+#Container_22BBD2F4_3075_D173_41B4_8504C593E6BF,
+#Container_4F2B55F4_4EAF_9F6A_41A0_92F7676F7469,
+#Container_4F2B55F4_4EAF_9F6A_41B2_AF8AEFB3B7AB,
+#Container_22BBC2F4_3075_D173_41B4_71F7A3560C34_mobile,
+#Container_22BBD2F4_3075_D173_41B4_8504C593E6BF_mobile{
+  overflow:hidden;
+}
+#HTMLText_062AD830_1140_E215_41B0_321699661E7F [tdvlayer="content"]{
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+#HTMLText_062AD830_1140_E215_41B0_321699661E7F h1,
+#HTMLText_062AD830_1140_E215_41B0_321699661E7F h2,
+#HTMLText_062AD830_1140_E215_41B0_321699661E7F h3,
+#HTMLText_062AD830_1140_E215_41B0_321699661E7F b,
+#HTMLText_062AD830_1140_E215_41B0_321699661E7F strong{
+  letter-spacing:-0.02em;
+}
+#Button_73A859D1_4E6F_77AA_41C2_D74B6095EB78 [tdvlayer="content"],
+#Button_062AF830_1140_E215_418D_D2FC11B12C47 [tdvlayer="content"]{
+  letter-spacing:0.03em;
+  text-transform:none;
+}
+#IconButton_062A8830_1140_E215_419D_3439F16CCB3E,
+#IconButton_062A8830_1140_E215_419D_3439F16CCB3E_ {
+  border-radius:999px;
+}
