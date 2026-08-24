@@ -123,17 +123,45 @@
   }
 
   function scrubWatermarkDOM() {
-    let audioPromptVisible = false;
     document.querySelectorAll('div, span, p, button').forEach(el => {
       const text = (el.textContent || '').replace(/\s+/g, ' ').trim();
+
       if (/Created by:?\s*3dvista Academic/i.test(text) || /^3dvista Academic$/i.test(text)) {
         const target = el.closest('div') || el;
         target.style.display = 'none';
       }
-      if (/Enable audio\?/i.test(text)) audioPromptVisible = true;
+
+      if (/Enable audio\?/i.test(text)) {
+        let dialog = el;
+
+        // Find the compact native 3DVista dialog wrapper.
+        for (let i = 0; i < 5 && dialog.parentElement; i++) {
+          const parent = dialog.parentElement;
+          const rect = parent.getBoundingClientRect ? parent.getBoundingClientRect() : null;
+          if (rect && rect.width >= 180 && rect.width <= 700 && rect.height >= 70 && rect.height <= 500) {
+            dialog = parent;
+          } else {
+            break;
+          }
+        }
+
+        // Do NOT hide the welcome screen. Only lift the audio prompt above it.
+        dialog.classList.add('v86-native-audio-prompt');
+
+        // Move only the dialog out of the viewer stacking context.
+        if (dialog.parentElement && dialog.parentElement !== document.body) {
+          const rect = dialog.getBoundingClientRect();
+          dialog.style.setProperty('left', rect.left + 'px', 'important');
+          dialog.style.setProperty('top', rect.top + 'px', 'important');
+          dialog.style.setProperty('width', rect.width + 'px', 'important');
+          document.body.appendChild(dialog);
+        }
+
+        dialog.style.setProperty('position', 'fixed', 'important');
+        dialog.style.setProperty('z-index', '2147483647', 'important');
+        dialog.style.setProperty('pointer-events', 'auto', 'important');
+      }
     });
-    const host = document.getElementById('villa86-ui');
-    if (host) host.classList.toggle('has-audio-prompt', audioPromptVisible);
   }
 
   function triggerOriginal(id) {
