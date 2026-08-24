@@ -347,10 +347,3 @@ html, body { background: #0c1113; }
   .v86-dock-row { grid-template-columns: 36px 1fr 36px; gap: 6px; }
   .v86-thumb { width: 98px; }
 }
-
-
-/* Keep the native 3DVista audio prompt above the custom welcome screen. */
-.v86-native-audio-prompt {
-  z-index: 2147483647 !important;
-  pointer-events: auto !important;
-}

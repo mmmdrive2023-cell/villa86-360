@@ -10,6 +10,7 @@
   })));
   const UNIQUE_SCENES = SCENES.filter((scene, index, all) => all.findIndex(item => item.label === scene.label) === index);
   const CONTROL_IDS = CONFIG.controls || {};
+  const LEGACY_HIDE_IDS = (CONFIG.legacy && Array.isArray(CONFIG.legacy.hideIds)) ? CONFIG.legacy.hideIds : [];
   const DEFAULT_SCENE = CONFIG.defaultScene || (UNIQUE_SCENES[0] && UNIQUE_SCENES[0].label) || null;
 
   const HIDE_CONTAINER_NAMES = new Set([
@@ -17,16 +18,6 @@
     '-Container footer', '-- SETTINGS', 'button menu sup', '-button set', '-button set container',
     '-Level 1', '-Level 2-1', '-Level 2-2', '-Level 2-3', '-Level 2-4', '-Level 2-5', '-Level 2-6', '-Level 2-7'
   ]);
-
-  const LEGACY_WELCOME_COMPONENT_IDS = [
-    'Label_70F181D7_4E6B_7756_4140_1349632BD541',
-    'Label_73018A04_4E6E_F4AA_41BD_560BBAF3832B',
-    'Label_7316602C_4E69_74FA_41B0_7284F8EBFA04',
-    'Container_72F07872_4E67_B56E_41AF_74B31EEAE071',
-    'Button_750AB6F8_4E6A_FD5A_41B8_3B00F4A4F566',
-    'Button_705138BD_4E66_F5D5_41C7_67A1B6CC770D',
-    'Button_73A859D1_4E6F_77AA_41C2_D74B6095EB78'
-  ];
 
   const LEGACY_TEXT_FRAGMENTS = [
     'WELCOME', 'GERANIUM', 'LAGOON BEACH', 'CONTINUE WATCHING', 'OPEN VIRTUAL TOUR', 'INTERACTIVE VIRTUAL TOUR'
@@ -101,7 +92,7 @@
         try { root.set('watermark', false); } catch (e) {}
         try { root.set('academicWatermark', false); } catch (e) {}
       }
-      LEGACY_WELCOME_COMPONENT_IDS.forEach(id => {
+      LEGACY_HIDE_IDS.forEach(id => {
         try {
           const component = root[id] || (typeof root.getById === 'function' ? root.getById(id) : null);
           if (component && typeof component.set === 'function') component.set('visible', false);
@@ -123,45 +114,43 @@
   }
 
   function scrubWatermarkDOM() {
-    document.querySelectorAll('div, span, p, button').forEach(el => {
+    document.querySelectorAll('div, span').forEach(el => {
       const text = (el.textContent || '').replace(/\s+/g, ' ').trim();
-
       if (/Created by:?\s*3dvista Academic/i.test(text) || /^3dvista Academic$/i.test(text)) {
         const target = el.closest('div') || el;
         target.style.display = 'none';
       }
-
-      if (/Enable audio\?/i.test(text)) {
-        let dialog = el;
-
-        // Find the compact native 3DVista dialog wrapper.
-        for (let i = 0; i < 5 && dialog.parentElement; i++) {
-          const parent = dialog.parentElement;
-          const rect = parent.getBoundingClientRect ? parent.getBoundingClientRect() : null;
-          if (rect && rect.width >= 180 && rect.width <= 700 && rect.height >= 70 && rect.height <= 500) {
-            dialog = parent;
-          } else {
-            break;
-          }
-        }
-
-        // Do NOT hide the welcome screen. Only lift the audio prompt above it.
-        dialog.classList.add('v86-native-audio-prompt');
-
-        // Move only the dialog out of the viewer stacking context.
-        if (dialog.parentElement && dialog.parentElement !== document.body) {
-          const rect = dialog.getBoundingClientRect();
-          dialog.style.setProperty('left', rect.left + 'px', 'important');
-          dialog.style.setProperty('top', rect.top + 'px', 'important');
-          dialog.style.setProperty('width', rect.width + 'px', 'important');
-          document.body.appendChild(dialog);
-        }
-
-        dialog.style.setProperty('position', 'fixed', 'important');
-        dialog.style.setProperty('z-index', '2147483647', 'important');
-        dialog.style.setProperty('pointer-events', 'auto', 'important');
-      }
     });
+  }
+
+  function raiseNativeAudioPrompt() {
+    const root = getRoot();
+    if (!root || typeof root.getByClassName !== 'function') return;
+    try {
+      const windows = root.getByClassName('UserInteractionWindow') || [];
+      windows.forEach(win => {
+        try {
+          const visible = typeof win.get === 'function' ? win.get('visible') : true;
+          if (!visible) return;
+
+          // 3DVista renders the audio permission prompt inside this native window.
+          // Move the actual native window DOM above our custom UI without touching the welcome screen.
+          const view = typeof win.wa === 'function' ? win.wa() : null;
+          const node = view && typeof view.cc === 'function' ? view.cc() : null;
+          if (!node) return;
+
+          if (node.parentElement !== document.body) {
+            document.body.appendChild(node);
+          }
+          node.style.setProperty('position', 'fixed', 'important');
+          node.style.setProperty('inset', '0', 'important');
+          node.style.setProperty('width', '100vw', 'important');
+          node.style.setProperty('height', '100vh', 'important');
+          node.style.setProperty('z-index', '2147483647', 'important');
+          node.style.setProperty('pointer-events', 'auto', 'important');
+        } catch (e) {}
+      });
+    } catch (e) {}
   }
 
   function triggerOriginal(id) {
@@ -347,6 +336,7 @@
     }
     hideLegacyUI();
     scrubWatermarkDOM();
+    raiseNativeAudioPrompt();
   }
 
   function boot() {

@@ -1,17 +1,14 @@
-Villa 86 reusable glass UI structure
+Villa 86 reusable UI v3.3
 
-UPLOAD / REPLACE IN GITHUB:
-1. index.htm
-2. custom-ui.css
-3. custom-ui.js
-4. tour-config.js  <-- NEW
+This build keeps the custom welcome screen unchanged.
 
-The main UI files are now reusable:
-- custom-ui.css = shared design
-- custom-ui.js = shared UI/behavior engine
-- tour-config.js = villa-specific content, floors, scenes, thumbnails and original 3DVista control IDs
+Fixes in v3.3:
+- Native 3DVista Enable Audio prompt is elevated above the custom welcome screen.
+- The old blue welcome CTA strip is hidden by its exact 3DVista component ID.
+- No welcome text, layout, menu, thumbnails, or reusable config structure was removed.
 
-For another villa, keep custom-ui.css and custom-ui.js the same and create a different tour-config.js for that villa.
-
-IMPORTANT:
-The scene labels in tour-config.js must exactly match the labels inside that villa's 3DVista export, and the control IDs must come from that villa's own generated scripts.
+Upload/replace:
+- index.htm
+- custom-ui.css
+- custom-ui.js
+- tour-config.js

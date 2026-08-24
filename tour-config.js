@@ -9,6 +9,11 @@ window.VILLA_TOUR_CONFIG = {
     openLabel: 'OPEN VIRTUAL TOUR'
   },
   defaultScene: 'Street View',
+  legacy: {
+    hideIds: [
+      'Container_72F07872_4E67_B56E_41AF_74B31EEAE071'
+    ]
+  },
   controls: {
     info: 'IconButton_2B90E40F_3593_B9CB_41B4_408768336038',
     location: 'IconButton_2B90A410_3593_B9D5_41B7_0B5CCA80EF0F',
