@@ -123,34 +123,63 @@
     });
   }
 
+  let nativeMessageHome = null;
+  let nativeMessageNextSibling = null;
+
   function raiseNativeAudioPrompt() {
     const root = getRoot();
-    if (!root || typeof root.getByClassName !== 'function') return;
+    if (!root || !root.NM) return;
+
     try {
-      const windows = root.getByClassName('UserInteractionWindow') || [];
-      windows.forEach(win => {
+      const messageWindow = root.NM;
+      const visible = typeof messageWindow.get === 'function' ? messageWindow.get('visible') : false;
+      const view = typeof messageWindow.wa === 'function' ? messageWindow.wa() : null;
+      const node = view && typeof view.cc === 'function' ? view.cc() : null;
+      if (!node) return;
+
+      if (visible) {
+        // MessageWindow is the exact native 3DVista YES/NO dialog used for
+        // "Enable audio?". Move the whole native full-screen modal to <body>
+        // so it is outside the #viewer stacking context and therefore above
+        // every part of the custom welcome UI.
+        if (!nativeMessageHome && node.parentNode) {
+          nativeMessageHome = node.parentNode;
+          nativeMessageNextSibling = node.nextSibling;
+        }
+
+        if (node.parentNode !== document.body) {
+          document.body.appendChild(node);
+        }
+
+        node.style.setProperty('position', 'fixed', 'important');
+        node.style.setProperty('left', '0', 'important');
+        node.style.setProperty('top', '0', 'important');
+        node.style.setProperty('right', '0', 'important');
+        node.style.setProperty('bottom', '0', 'important');
+        node.style.setProperty('width', '100vw', 'important');
+        node.style.setProperty('height', '100vh', 'important');
+        node.style.setProperty('z-index', '2147483647', 'important');
+        node.style.setProperty('pointer-events', 'auto', 'important');
+        node.style.setProperty('isolation', 'isolate', 'important');
+      } else if (nativeMessageHome && node.parentNode === document.body) {
+        // Put it back after the user presses YES/NO so 3DVista keeps its
+        // normal component hierarchy for any later messages.
         try {
-          const visible = typeof win.get === 'function' ? win.get('visible') : true;
-          if (!visible) return;
-
-          // 3DVista renders the audio permission prompt inside this native window.
-          // Move the actual native window DOM above our custom UI without touching the welcome screen.
-          const view = typeof win.wa === 'function' ? win.wa() : null;
-          const node = view && typeof view.cc === 'function' ? view.cc() : null;
-          if (!node) return;
-
-          if (node.parentElement !== document.body) {
-            document.body.appendChild(node);
+          if (nativeMessageNextSibling && nativeMessageNextSibling.parentNode === nativeMessageHome) {
+            nativeMessageHome.insertBefore(node, nativeMessageNextSibling);
+          } else {
+            nativeMessageHome.appendChild(node);
           }
-          node.style.setProperty('position', 'fixed', 'important');
-          node.style.setProperty('inset', '0', 'important');
-          node.style.setProperty('width', '100vw', 'important');
-          node.style.setProperty('height', '100vh', 'important');
-          node.style.setProperty('z-index', '2147483647', 'important');
-          node.style.setProperty('pointer-events', 'auto', 'important');
         } catch (e) {}
-      });
-    } catch (e) {}
+
+        node.style.removeProperty('z-index');
+        node.style.removeProperty('isolation');
+        nativeMessageHome = null;
+        nativeMessageNextSibling = null;
+      }
+    } catch (e) {
+      console.warn('[Villa UI] Unable to raise native audio prompt', e);
+    }
   }
 
   function triggerOriginal(id) {
@@ -345,6 +374,7 @@
     setTimeout(syncUI, 1500);
     setInterval(syncUI, 1800);
     setInterval(scrubWatermarkDOM, 1200);
+    setInterval(raiseNativeAudioPrompt, 75);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

@@ -1,11 +1,11 @@
-Villa 86 reusable UI v3.3
+Villa 86 reusable UI v3.4
 
-This build keeps the custom welcome screen unchanged.
-
-Fixes in v3.3:
-- Native 3DVista Enable Audio prompt is elevated above the custom welcome screen.
-- The old blue welcome CTA strip is hidden by its exact 3DVista component ID.
-- No welcome text, layout, menu, thumbnails, or reusable config structure was removed.
+Surgical fix only:
+- Keeps the custom welcome screen visible.
+- Keeps the old blue 3DVista welcome strip hidden.
+- Raises the exact native 3DVista MessageWindow (Enable audio? YES/NO) above the entire custom UI.
+- Restores the native message component to its original 3DVista parent after YES/NO is clicked.
+- Added cache-busting custom-ui.js?v=4.
 
 Upload/replace:
 - index.htm
