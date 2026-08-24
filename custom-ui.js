@@ -1,40 +1,16 @@
 (function () {
   'use strict';
 
-  const CONFIG = window.VILLA_TOUR_CONFIG || {};
-  const FLOORS = Array.isArray(CONFIG.floors) ? CONFIG.floors : [];
-  const SCENES = FLOORS.flatMap(floor => (floor.scenes || []).map(scene => ({
-    label: scene.label,
-    thumb: scene.thumb,
-    floor: floor.name
-  })));
-  const UNIQUE_SCENES = SCENES.filter((scene, index, all) => all.findIndex(item => item.label === scene.label) === index);
-  const CONTROL_IDS = CONFIG.controls || {};
-  const LEGACY_HIDE_IDS = (CONFIG.legacy && Array.isArray(CONFIG.legacy.hideIds)) ? CONFIG.legacy.hideIds : [];
-  const DEFAULT_SCENE = CONFIG.defaultScene || (UNIQUE_SCENES[0] && UNIQUE_SCENES[0].label) || null;
+  const CFG = window.VILLA_TOUR_CONFIG;
+  if (!CFG) return;
 
-  const HIDE_CONTAINER_NAMES = new Set([
-    '--MENU', '- COLLAPSE', '- EXPANDED', '- Buttons set', '-Container Icons 1', '-Container Icons 2',
-    '-Container footer', '-- SETTINGS', 'button menu sup', '-button set', '-button set container',
-    '-Level 1', '-Level 2-1', '-Level 2-2', '-Level 2-3', '-Level 2-4', '-Level 2-5', '-Level 2-6', '-Level 2-7'
-  ]);
-
-  const LEGACY_TEXT_FRAGMENTS = [
-    'WELCOME', 'GERANIUM', 'LAGOON BEACH', 'CONTINUE WATCHING', 'OPEN VIRTUAL TOUR', 'INTERACTIVE VIRTUAL TOUR'
-  ];
-
-  const state = {
-    tourActive: false,
-    menuOpen: false,
-    dockCollapsed: false,
-    openFloors: new Set(FLOORS.length ? [FLOORS[0].name] : [])
-  };
+  const state = { tourActive: false, menuOpen: false, dockCollapsed: false, openFloors: new Set() };
 
   const icons = {
     menu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 7h16M4 12h16M4 17h16"/></svg>',
-    chevronDown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m6 9 6 6 6-6"/></svg>',
-    chevronLeft: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m15 5-7 7 7 7"/></svg>',
-    chevronRight: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m9 5 7 7-7 7"/></svg>',
+    down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m6 9 6 6 6-6"/></svg>',
+    left: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m15 5-7 7 7 7"/></svg>',
+    right: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m9 5 7 7-7 7"/></svg>',
     home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m3 11 9-8 9 8v9a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg>',
     building: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 21V8l7-4 7 4v13M3 21h18M9 10h2m2 0h2M9 14h2m2 0h2M9 18h2m2 0h2"/></svg>',
     terrace: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 20h16M6 16h12M8 12h8M10 8h4M12 3v5"/></svg>',
@@ -48,291 +24,180 @@
     cube: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="M12 3v18M4 7.5 12 12l8-4.5"/></svg>'
   };
 
-  function getRoot() {
+  function root() {
     try { return window.tour && tour._getRootPlayer ? tour._getRootPlayer() : null; }
-    catch (e) { return null; }
+    catch (_) { return null; }
   }
 
-  function getActiveLabel() {
-    try {
-      const root = getRoot();
-      if (!root) return null;
-      const media = root.getActiveMediaWithViewer(root.getMainViewer());
-      if (!media) return null;
-      const data = media.get('data');
-      return (data && data.label) || media.get('label') || null;
-    } catch (e) { return null; }
-  }
-
-  function goTo(label) {
-    const root = getRoot();
-    if (!root || !label) return;
-    try {
-      root.setMainMediaByName(label);
-      state.tourActive = true;
-      applyState();
-    } catch (e) {
-      console.warn('[Villa UI] Unable to navigate to', label, e);
-    }
-  }
-
-  function componentText(component) {
-    try {
-      const label = component.get && component.get('label');
-      const text = component.get && component.get('text');
-      return String([label || '', text || ''].join(' ')).toUpperCase();
-    } catch (e) { return ''; }
-  }
-
-  function hideLegacyUI() {
-    const root = getRoot();
-    if (!root) return;
-    try {
-      if (typeof root.set === 'function') {
-        try { root.set('watermark', false); } catch (e) {}
-        try { root.set('academicWatermark', false); } catch (e) {}
-      }
-      LEGACY_HIDE_IDS.forEach(id => {
-        try {
-          const component = root[id] || (typeof root.getById === 'function' ? root.getById(id) : null);
-          if (component && typeof component.set === 'function') component.set('visible', false);
-        } catch (e) {}
-      });
-      (root.getByClassName('ThumbnailList') || []).forEach(c => { try { c.set('visible', false); } catch (e) {} });
-      ['Container', 'Label', 'Button', 'Image', 'IconButton'].forEach(className => {
-        (root.getByClassName(className) || []).forEach(component => {
-          try {
-            const data = component.get && component.get('data');
-            const name = data && data.name;
-            const text = componentText(component);
-            const shouldHideByText = LEGACY_TEXT_FRAGMENTS.some(fragment => text.includes(fragment));
-            if ((name && HIDE_CONTAINER_NAMES.has(name)) || shouldHideByText) component.set('visible', false);
-          } catch (e) {}
-        });
-      });
-    } catch (e) {}
-  }
-
-  function scrubWatermarkDOM() {
-    document.querySelectorAll('div, span').forEach(el => {
-      const text = (el.textContent || '').replace(/\s+/g, ' ').trim();
-      if (/Created by:?\s*3dvista Academic/i.test(text) || /^3dvista Academic$/i.test(text)) {
-        const target = el.closest('div') || el;
-        target.style.display = 'none';
-      }
-    });
-  }
-
-  let nativeMessageHome = null;
-  let nativeMessageNextSibling = null;
-
-  function raiseNativeAudioPrompt() {
-    const root = getRoot();
-    if (!root || !root.NM) return;
-
-    try {
-      const messageWindow = root.NM;
-      const visible = typeof messageWindow.get === 'function' ? messageWindow.get('visible') : false;
-      const view = typeof messageWindow.wa === 'function' ? messageWindow.wa() : null;
-      const node = view && typeof view.cc === 'function' ? view.cc() : null;
-      if (!node) return;
-
-      if (visible) {
-        // MessageWindow is the exact native 3DVista YES/NO dialog used for
-        // "Enable audio?". Move the whole native full-screen modal to <body>
-        // so it is outside the #viewer stacking context and therefore above
-        // every part of the custom welcome UI.
-        if (!nativeMessageHome && node.parentNode) {
-          nativeMessageHome = node.parentNode;
-          nativeMessageNextSibling = node.nextSibling;
-        }
-
-        if (node.parentNode !== document.body) {
-          document.body.appendChild(node);
-        }
-
-        node.style.setProperty('position', 'fixed', 'important');
-        node.style.setProperty('left', '0', 'important');
-        node.style.setProperty('top', '0', 'important');
-        node.style.setProperty('right', '0', 'important');
-        node.style.setProperty('bottom', '0', 'important');
-        node.style.setProperty('width', '100vw', 'important');
-        node.style.setProperty('height', '100vh', 'important');
-        node.style.setProperty('z-index', '2147483647', 'important');
-        node.style.setProperty('pointer-events', 'auto', 'important');
-        node.style.setProperty('isolation', 'isolate', 'important');
-      } else if (nativeMessageHome && node.parentNode === document.body) {
-        // Put it back after the user presses YES/NO so 3DVista keeps its
-        // normal component hierarchy for any later messages.
-        try {
-          if (nativeMessageNextSibling && nativeMessageNextSibling.parentNode === nativeMessageHome) {
-            nativeMessageHome.insertBefore(node, nativeMessageNextSibling);
-          } else {
-            nativeMessageHome.appendChild(node);
-          }
-        } catch (e) {}
-
-        node.style.removeProperty('z-index');
-        node.style.removeProperty('isolation');
-        nativeMessageHome = null;
-        nativeMessageNextSibling = null;
-      }
-    } catch (e) {
-      console.warn('[Villa UI] Unable to raise native audio prompt', e);
-    }
+  function component(id) {
+    const r = root();
+    if (!r || !id) return null;
+    return r[id] || (typeof r.getById === 'function' ? r.getById(id) : null);
   }
 
   function triggerOriginal(id) {
-    const root = getRoot();
-    if (!root || !id) return false;
+    const r = root();
+    const c = component(id);
+    if (!r || !c) return false;
     try {
-      const component = root[id] || (typeof root.getById === 'function' ? root.getById(id) : null);
-      if (!component) return false;
-      if (typeof component.trigger === 'function') { component.trigger('click'); return true; }
-      if (typeof component.click === 'function') { component.click(); return true; }
-      const clickScript = component.get && component.get('click');
-      if (clickScript) { Function(clickScript).call(root); return true; }
-    } catch (e) { console.warn('[Villa UI] Failed original action', id, e); }
+      const script = c.get && c.get('click');
+      if (script) { Function(script).call(r); return true; }
+      if (typeof c.trigger === 'function') { c.trigger('click'); return true; }
+    } catch (err) { console.warn('[Villa86 UI] original action failed', id, err); }
     return false;
   }
 
-  function brandLogoMarkup() {
-    return '<div class="v86-logo-mark">' + (CONFIG.title || 'VILLA') + '</div>' +
-      '<div class="v86-logo-sub">' + (CONFIG.subtitle || 'Interactive Virtual Tour') + '</div>';
+  function setVisible(id, visible) {
+    const c = component(id);
+    if (!c || typeof c.set !== 'function') return;
+    try { c.set('visible', visible); } catch (_) {}
+  }
+
+  function hideLegacy() {
+    const r = root();
+    if (!r) return;
+    (CFG.legacy.welcomeIds || []).forEach(id => setVisible(id, false));
+    try { (r.getByClassName('ThumbnailList') || []).forEach(c => c.set('visible', false)); } catch (_) {}
+    try { (r.getByClassName('ThumbnailGrid') || []).forEach(c => c.set('visible', false)); } catch (_) {}
+    try {
+      (r.getByClassName('Container') || []).forEach(c => {
+        const d = c.get && c.get('data');
+        if (d && CFG.legacy.containerNames.includes(d.name)) c.set('visible', false);
+      });
+    } catch (_) {}
+  }
+
+  function friendlyLabels() {
+    const map = new Map();
+    CFG.floors.forEach(f => f.scenes.forEach(s => { if (!map.has(s.index)) map.set(s.index, s.label); }));
+    return map;
+  }
+
+  function playlistScenes() {
+    const r = root();
+    if (!r || !r.mainPlayList) return [];
+    const items = r.mainPlayList.get('items') || [];
+    const friendly = friendlyLabels();
+    const out = [];
+    items.forEach((item, index) => {
+      try {
+        const media = item.get('media');
+        const camera = item.get('camera');
+        if (!media || !camera) return; // Panorama items only.
+        const thumb = media.get('thumbnailUrl');
+        if (!thumb) return;
+        const data = media.get('data') || {};
+        const raw = data.label || media.get('label') || ('Scene ' + index);
+        out.push({ index, label: friendly.get(index) || String(raw), thumb });
+      } catch (_) {}
+    });
+    return out;
+  }
+
+  function selectIndex(index) {
+    const r = root();
+    if (!r || !r.mainPlayList) return;
+    state.tourActive = true;
+    applyState();
+    try {
+      if (typeof r.setPlayListSelectedIndex === 'function') r.setPlayListSelectedIndex(r.mainPlayList, Number(index));
+      else r.mainPlayList.set('selectedIndex', Number(index));
+    } catch (err) { console.warn('[Villa86 UI] playlist selection failed', index, err); }
+    setTimeout(hideLegacy, 50);
   }
 
   function floorMarkup() {
-    return FLOORS.map(group => {
-      const isOpen = state.openFloors.has(group.name);
-      const icon = icons[group.icon] || icons.building;
-      const subitems = (group.scenes || []).map(scene =>
-        '<button class="v86-subitem" data-scene="' + scene.label + '" data-floor="' + group.name + '">' + scene.label + '</button>'
-      ).join('');
-      return '<div class="v86-floor' + (isOpen ? ' is-open' : '') + '" data-floor-wrap="' + group.name + '">' +
-        '<button class="v86-floor-trigger" data-floor-toggle="' + group.name + '">' +
-          '<span class="v86-floor-icon">' + icon + '</span>' +
-          '<span class="v86-floor-label">' + group.name + '</span>' +
-          '<span class="v86-floor-caret">' + icons.chevronDown + '</span>' +
-        '</button>' +
-        '<div class="v86-floor-list">' + subitems + '</div>' +
-      '</div>';
+    return CFG.floors.map(floor => {
+      const scenes = floor.scenes.map(s => '<button class="v86-subitem" data-button-id="' + s.buttonId + '" data-index="' + s.index + '">' + s.label + '</button>').join('');
+      return '<div class="v86-floor" data-floor="' + floor.name + '">' +
+        '<button class="v86-floor-trigger"><span class="v86-floor-icon">' + icons[floor.icon] + '</span><span>' + floor.name + '</span><span class="v86-floor-caret">' + icons.down + '</span></button>' +
+        '<div class="v86-floor-list">' + scenes + '</div></div>';
     }).join('');
   }
 
-  function thumbMarkup() {
-    return UNIQUE_SCENES.map(scene =>
-      '<button class="v86-thumb" data-scene="' + scene.label + '">' +
-        '<img class="v86-thumb-image" src="' + scene.thumb + '" alt="' + scene.label + '">' +
-        '<span class="v86-thumb-label">' + scene.label + '</span>' +
-      '</button>'
-    ).join('');
-  }
-
-  function render() {
-    const hero = CONFIG.hero || {};
-    const host = document.getElementById('villa86-ui');
-    if (!host) return;
+  function renderBase() {
+    const viewer = document.getElementById('viewer');
+    if (!viewer) return null;
+    let host = document.getElementById('villa86-ui');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'villa86-ui';
+      viewer.appendChild(host); // Same stacking context as native 3DVista message window.
+    }
     host.innerHTML =
-      '<div class="v86-brand v86-glass">' + brandLogoMarkup() + '</div>' +
+      '<div class="v86-brand v86-glass"><img src="reef-island-logo.png" alt="Reef Island"></div>' +
       '<div class="v86-actions v86-glass">' +
-        '<button class="v86-icon-btn" id="v86-menu" aria-label="Toggle navigation">' + icons.menu + '</button>' +
-        '<button class="v86-icon-btn" id="v86-info" aria-label="Information">' + icons.info + '</button>' +
-        '<button class="v86-icon-btn" id="v86-pin" aria-label="Location">' + icons.pin + '</button>' +
-        '<button class="v86-icon-btn" id="v86-gallery" aria-label="Gallery">' + icons.gallery + '</button>' +
-        '<button class="v86-icon-btn" id="v86-plan" aria-label="Floor plan">' + icons.plan + '</button>' +
-        '<button class="v86-icon-btn" id="v86-video" aria-label="Video">' + icons.video + '</button>' +
+        '<button class="v86-icon-btn" id="v86-menu">' + icons.menu + '</button>' +
+        '<button class="v86-icon-btn" data-original="' + CFG.controls.info + '">' + icons.info + '</button>' +
+        '<button class="v86-icon-btn" data-original="' + CFG.controls.location + '">' + icons.pin + '</button>' +
+        '<button class="v86-icon-btn" data-original="' + CFG.controls.gallery + '">' + icons.gallery + '</button>' +
+        '<button class="v86-icon-btn" data-original="' + CFG.controls.floorPlan + '">' + icons.plan + '</button>' +
+        '<button class="v86-icon-btn" data-original="' + CFG.controls.video + '">' + icons.video + '</button>' +
       '</div>' +
       '<nav class="v86-menu-panel v86-glass" id="v86-menu-panel">' + floorMarkup() + '</nav>' +
-      '<section class="v86-hero" id="v86-hero"><div class="v86-hero-inner">' +
-        '<h1 class="v86-welcome">' + (hero.welcome || 'WELCOME') + '</h1>' +
-        '<div class="v86-hero-line"><span></span><strong>' + (hero.collection || '') + '</strong><span></span></div>' +
-        '<h2 class="v86-villa-name">' + (hero.name || CONFIG.title || '') + '</h2>' +
-        '<div class="v86-hero-actions">' +
-          '<button class="v86-cta v86-cta-dark" id="v86-continue">' + icons.play + '<span>' + (hero.continueLabel || 'CONTINUE WATCHING') + '</span></button>' +
-          '<button class="v86-cta v86-cta-gold" id="v86-open-tour">' + icons.cube + '<span>' + (hero.openLabel || 'OPEN VIRTUAL TOUR') + '</span></button>' +
-        '</div></div></section>' +
-      '<button class="v86-edge v86-edge-prev" id="v86-prev" aria-label="Previous scene">' + icons.chevronLeft + '</button>' +
-      '<button class="v86-edge v86-edge-next" id="v86-next" aria-label="Next scene">' + icons.chevronRight + '</button>' +
-      '<div class="v86-dock v86-glass" id="v86-dock">' +
-        '<button class="v86-dock-caption" id="v86-dock-toggle"><span>Scenes</span><span class="v86-dock-caret">' + icons.chevronDown + '</span></button>' +
-        '<div class="v86-dock-row"><button class="v86-dock-nav" id="v86-dock-prev">' + icons.chevronLeft + '</button>' +
-        '<div class="v86-thumbs-wrap"><div class="v86-thumbs">' + thumbMarkup() + '</div></div>' +
-        '<button class="v86-dock-nav" id="v86-dock-next">' + icons.chevronRight + '</button></div>' +
-      '</div>';
-    wireEvents();
-    applyState();
+      '<section class="v86-hero">' +
+        '<h1>WELCOME</h1><div class="v86-eyebrow"><span></span><b>' + CFG.hero.eyebrow + '</b><span></span></div>' +
+        '<h2>' + CFG.hero.title + '</h2>' +
+        '<div class="v86-hero-actions"><button class="v86-cta v86-dark" id="v86-continue">' + icons.play + '<span>CONTINUE WATCHING</span></button>' +
+        '<button class="v86-cta v86-gold" id="v86-open">' + icons.cube + '<span>OPEN VIRTUAL TOUR</span></button></div>' +
+      '</section>' +
+      '<button class="v86-edge v86-prev">' + icons.left + '</button><button class="v86-edge v86-next">' + icons.right + '</button>' +
+      '<div class="v86-dock v86-glass"><button class="v86-dock-toggle"><span>Scenes</span><span>' + icons.down + '</span></button>' +
+      '<div class="v86-dock-row"><button class="v86-dock-nav v86-dock-prev">' + icons.left + '</button><div class="v86-thumbs-wrap"><div class="v86-thumbs"></div></div><button class="v86-dock-nav v86-dock-next">' + icons.right + '</button></div></div>';
+    bindBase();
+    return host;
   }
 
-  function setFloorExpanded(floor, expanded) {
-    const wrap = document.querySelector('[data-floor-wrap="' + CSS.escape(floor) + '"]');
-    if (wrap) wrap.classList.toggle('is-open', expanded);
+  function buildDock() {
+    const list = document.querySelector('.v86-thumbs');
+    if (!list) return;
+    const scenes = playlistScenes();
+    list.innerHTML = scenes.map(s => '<button class="v86-thumb" data-index="' + s.index + '"><img src="' + s.thumb + '" alt=""><span>' + escapeHtml(s.label) + '</span></button>').join('');
+    list.querySelectorAll('.v86-thumb').forEach(btn => btn.addEventListener('click', () => selectIndex(btn.dataset.index)));
   }
 
-  function bindOriginalAction(domId, originalId) {
-    const el = document.getElementById(domId);
-    if (!el || !originalId) return;
-    el.addEventListener('click', event => {
-      event.preventDefault();
-      event.stopPropagation();
-      triggerOriginal(originalId);
-    });
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
-  function wireEvents() {
-    const menuButton = document.getElementById('v86-menu');
-    const menuPanel = document.getElementById('v86-menu-panel');
-    menuButton.addEventListener('click', event => {
-      event.preventDefault(); event.stopPropagation();
-      state.menuOpen = !state.menuOpen; applyState();
-    });
-    menuPanel.addEventListener('click', event => event.stopPropagation());
-
-    document.querySelectorAll('[data-floor-toggle]').forEach(btn => {
-      btn.addEventListener('click', event => {
-        event.preventDefault(); event.stopPropagation();
-        const floor = btn.dataset.floorToggle;
-        const expanded = !state.openFloors.has(floor);
-        if (expanded) state.openFloors.add(floor); else state.openFloors.delete(floor);
-        setFloorExpanded(floor, expanded);
-      });
-    });
-
-    document.querySelectorAll('.v86-subitem').forEach(btn => {
-      btn.addEventListener('click', event => {
-        event.preventDefault(); event.stopPropagation();
-        activateTour(btn.dataset.scene);
-        if (window.innerWidth <= 900) { state.menuOpen = false; applyState(); }
-      });
-    });
-
-    document.getElementById('v86-open-tour').addEventListener('click', () => activateTour(DEFAULT_SCENE));
-    document.getElementById('v86-continue').addEventListener('click', () => activateTour(getActiveLabel() || DEFAULT_SCENE));
-
-    bindOriginalAction('v86-info', CONTROL_IDS.info);
-    bindOriginalAction('v86-pin', CONTROL_IDS.location);
-    bindOriginalAction('v86-gallery', CONTROL_IDS.gallery);
-    bindOriginalAction('v86-plan', CONTROL_IDS.floorPlan);
-    bindOriginalAction('v86-video', CONTROL_IDS.video);
-
-    document.querySelectorAll('.v86-thumb').forEach(btn => btn.addEventListener('click', () => goTo(btn.dataset.scene)));
-    document.getElementById('v86-prev').addEventListener('click', () => stepScene(-1));
-    document.getElementById('v86-next').addEventListener('click', () => stepScene(1));
-    document.getElementById('v86-dock-prev').addEventListener('click', () => scrollThumbs(-1));
-    document.getElementById('v86-dock-next').addEventListener('click', () => scrollThumbs(1));
-    document.getElementById('v86-dock-toggle').addEventListener('click', event => {
-      event.preventDefault(); event.stopPropagation();
-      state.dockCollapsed = !state.dockCollapsed; applyState();
-    });
-
-    document.addEventListener('click', event => {
-      if (!state.menuOpen) return;
-      if (event.target.closest('#v86-menu-panel') || event.target.closest('#v86-menu')) return;
-      state.menuOpen = false; applyState();
-    });
+  function bindBase() {
+    document.getElementById('v86-menu').addEventListener('click', e => { e.stopPropagation(); state.menuOpen = !state.menuOpen; applyState(); });
+    document.getElementById('v86-menu-panel').addEventListener('click', e => e.stopPropagation());
+    document.querySelectorAll('.v86-floor-trigger').forEach(btn => btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const floor = btn.closest('.v86-floor');
+      floor.classList.toggle('is-open'); // Never closes the whole menu.
+    }));
+    document.querySelectorAll('.v86-subitem').forEach(btn => btn.addEventListener('click', e => {
+      e.stopPropagation(); state.tourActive = true; applyState();
+      if (!triggerOriginal(btn.dataset.buttonId)) selectIndex(btn.dataset.index);
+      setTimeout(hideLegacy, 40);
+    }));
+    document.querySelectorAll('[data-original]').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); triggerOriginal(btn.dataset.original); }));
+    document.getElementById('v86-open').addEventListener('click', () => { state.tourActive = true; applyState(); triggerOriginal(CFG.controls.openTour); setTimeout(hideLegacy, 40); });
+    document.getElementById('v86-continue').addEventListener('click', () => { state.tourActive = true; applyState(); triggerOriginal(CFG.controls.continueWatching); setTimeout(hideLegacy, 40); });
+    document.querySelector('.v86-dock-toggle').addEventListener('click', () => { state.dockCollapsed = !state.dockCollapsed; applyState(); });
+    document.querySelector('.v86-dock-prev').addEventListener('click', () => scrollDock(-1));
+    document.querySelector('.v86-dock-next').addEventListener('click', () => scrollDock(1));
+    document.querySelector('.v86-prev').addEventListener('click', () => step(-1));
+    document.querySelector('.v86-next').addEventListener('click', () => step(1));
+    document.addEventListener('click', e => { if (state.menuOpen && !e.target.closest('#v86-menu-panel') && !e.target.closest('#v86-menu')) { state.menuOpen = false; applyState(); } });
   }
 
-  function activateTour(scene) {
-    state.tourActive = true; applyState(); hideLegacyUI(); if (scene) goTo(scene);
+  function scrollDock(dir) {
+    const wrap = document.querySelector('.v86-thumbs-wrap');
+    if (wrap) wrap.scrollBy({ left: dir * Math.max(300, wrap.clientWidth * .65), behavior: 'smooth' });
+  }
+
+  function step(dir) {
+    const r = root();
+    const scenes = playlistScenes();
+    if (!r || !r.mainPlayList || !scenes.length) return;
+    const current = r.mainPlayList.get('selectedIndex');
+    let pos = scenes.findIndex(s => s.index === current);
+    if (pos < 0) pos = 0;
+    pos = (pos + dir + scenes.length) % scenes.length;
+    selectIndex(scenes[pos].index);
   }
 
   function applyState() {
@@ -343,40 +208,38 @@
     host.classList.toggle('is-dock-collapsed', state.dockCollapsed);
   }
 
-  function scrollThumbs(direction) {
-    const wrap = document.querySelector('.v86-thumbs-wrap');
-    if (wrap) wrap.scrollBy({ left: direction * Math.max(260, wrap.clientWidth * 0.55), behavior: 'smooth' });
+  function liftAudioPrompt() {
+    const viewer = document.getElementById('viewer');
+    if (!viewer) return;
+    viewer.querySelectorAll('div,span').forEach(el => {
+      if ((el.textContent || '').trim() !== 'Enable audio?') return;
+      let node = el;
+      for (let i = 0; i < 5 && node.parentElement && node.parentElement !== viewer; i++) {
+        const parent = node.parentElement;
+        const rect = parent.getBoundingClientRect();
+        if (rect.width > 120 && rect.width < window.innerWidth * .95 && rect.height > 50 && rect.height < window.innerHeight * .95) node = parent;
+      }
+      node.classList.add('v86-audio-top');
+    });
   }
 
-  function stepScene(direction) {
-    if (!UNIQUE_SCENES.length) return;
-    const current = getActiveLabel();
-    let idx = UNIQUE_SCENES.findIndex(s => s.label === current);
-    if (idx < 0) idx = 0;
-    idx = (idx + direction + UNIQUE_SCENES.length) % UNIQUE_SCENES.length;
-    activateTour(UNIQUE_SCENES[idx].label);
-  }
-
-  function syncUI() {
-    const label = getActiveLabel();
-    if (label) {
-      document.querySelectorAll('.v86-thumb').forEach(btn => btn.classList.toggle('is-active', btn.dataset.scene === label));
-      document.querySelectorAll('.v86-subitem').forEach(btn => btn.classList.toggle('is-active', btn.dataset.scene === label));
-    }
-    hideLegacyUI();
-    scrubWatermarkDOM();
-    raiseNativeAudioPrompt();
+  function sync() {
+    const r = root();
+    if (!r || !r.mainPlayList) return;
+    hideLegacy();
+    liftAudioPrompt();
+    const selected = r.mainPlayList.get('selectedIndex');
+    document.querySelectorAll('.v86-thumb').forEach(t => t.classList.toggle('is-active', Number(t.dataset.index) === selected));
   }
 
   function boot() {
-    render();
-    setTimeout(syncUI, 600);
-    setTimeout(syncUI, 1500);
-    setInterval(syncUI, 1800);
-    setInterval(scrubWatermarkDOM, 1200);
-    setInterval(raiseNativeAudioPrompt, 75);
+    if (!root()) { setTimeout(boot, 200); return; }
+    hideLegacy();
+    renderBase();
+    buildDock();
+    sync();
+    setInterval(sync, 700);
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
-  else boot();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
