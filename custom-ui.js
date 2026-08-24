@@ -208,18 +208,88 @@
     host.classList.toggle('is-dock-collapsed', state.dockCollapsed);
   }
 
-  function liftAudioPrompt() {
+  let audioNativeDialog = null;
+
+  function normalizeText(el) {
+    return String((el && el.textContent) || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function deepestExactText(rootNode, wanted) {
+    if (!rootNode) return null;
+    const target = wanted.toUpperCase();
+    const nodes = Array.from(rootNode.querySelectorAll('*')).filter(el => normalizeText(el).toUpperCase() === target);
+    return nodes.find(el => !Array.from(el.children || []).some(ch => normalizeText(ch).toUpperCase() === target)) || nodes[0] || null;
+  }
+
+  function dispatchNativeButton(el) {
+    if (!el) return;
+    ['pointerdown','mousedown','pointerup','mouseup','click'].forEach(type => {
+      try { el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window })); } catch (_) {}
+    });
+    try { if (typeof el.click === 'function') el.click(); } catch (_) {}
+  }
+
+  function closeAudioMirror() {
+    const mirror = document.getElementById('v86-audio-overlay');
+    if (mirror) mirror.remove();
+    if (audioNativeDialog) {
+      audioNativeDialog.style.removeProperty('visibility');
+      audioNativeDialog.style.removeProperty('pointer-events');
+      audioNativeDialog = null;
+    }
+  }
+
+  function mirrorAudioPrompt() {
     const viewer = document.getElementById('viewer');
     if (!viewer) return;
-    viewer.querySelectorAll('div,span').forEach(el => {
-      if ((el.textContent || '').trim() !== 'Enable audio?') return;
-      let node = el;
-      for (let i = 0; i < 5 && node.parentElement && node.parentElement !== viewer; i++) {
-        const parent = node.parentElement;
-        const rect = parent.getBoundingClientRect();
-        if (rect.width > 120 && rect.width < window.innerWidth * .95 && rect.height > 50 && rect.height < window.innerHeight * .95) node = parent;
+
+    const prompt = Array.from(viewer.querySelectorAll('*')).find(el => normalizeText(el) === 'Enable audio?');
+    if (!prompt) {
+      closeAudioMirror();
+      return;
+    }
+
+    let node = prompt.parentElement;
+    let dialog = null;
+    for (let i = 0; node && node !== viewer && i < 8; i++, node = node.parentElement) {
+      const text = normalizeText(node).toUpperCase();
+      const rect = node.getBoundingClientRect();
+      const hasPrompt = text.includes('ENABLE AUDIO?');
+      const hasYes = text.includes('YES');
+      const hasNo = text.includes('NO');
+      if (hasPrompt && hasYes && hasNo && rect.width >= 180 && rect.width <= 760 && rect.height >= 80 && rect.height <= 520) {
+        dialog = node;
+        break;
       }
-      node.classList.add('v86-audio-top');
+    }
+    if (!dialog) return;
+
+    const nativeYes = deepestExactText(dialog, 'YES');
+    const nativeNo = deepestExactText(dialog, 'NO');
+    if (!nativeYes && !nativeNo) return;
+
+    audioNativeDialog = dialog;
+    dialog.style.setProperty('visibility', 'hidden', 'important');
+    dialog.style.setProperty('pointer-events', 'none', 'important');
+
+    if (document.getElementById('v86-audio-overlay')) return;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'v86-audio-overlay';
+    overlay.innerHTML = '<div class="v86-audio-card"><div class="v86-audio-question">Enable audio?</div><div class="v86-audio-buttons"><button data-answer="yes">YES</button><button data-answer="no">NO</button></div></div>';
+    document.body.appendChild(overlay);
+
+    overlay.querySelector('[data-answer="yes"]').addEventListener('click', function () {
+      dialog.style.removeProperty('visibility');
+      dialog.style.removeProperty('pointer-events');
+      dispatchNativeButton(nativeYes);
+      setTimeout(closeAudioMirror, 80);
+    });
+    overlay.querySelector('[data-answer="no"]').addEventListener('click', function () {
+      dialog.style.removeProperty('visibility');
+      dialog.style.removeProperty('pointer-events');
+      dispatchNativeButton(nativeNo);
+      setTimeout(closeAudioMirror, 80);
     });
   }
 
@@ -227,7 +297,7 @@
     const r = root();
     if (!r || !r.mainPlayList) return;
     hideLegacy();
-    liftAudioPrompt();
+    mirrorAudioPrompt();
     const selected = r.mainPlayList.get('selectedIndex');
     document.querySelectorAll('.v86-thumb').forEach(t => t.classList.toggle('is-active', Number(t.dataset.index) === selected));
   }
