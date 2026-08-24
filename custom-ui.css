@@ -347,3 +347,10 @@ html, body { background: #0c1113; }
   .v86-dock-row { grid-template-columns: 36px 1fr 36px; gap: 6px; }
   .v86-thumb { width: 98px; }
 }
+
+/* Keep 3DVista's native audio permission prompt unobstructed. */
+#villa86-ui.has-audio-prompt .v86-hero {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}

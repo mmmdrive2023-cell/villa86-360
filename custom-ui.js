@@ -18,6 +18,16 @@
     '-Level 1', '-Level 2-1', '-Level 2-2', '-Level 2-3', '-Level 2-4', '-Level 2-5', '-Level 2-6', '-Level 2-7'
   ]);
 
+  const LEGACY_WELCOME_COMPONENT_IDS = [
+    'Label_70F181D7_4E6B_7756_4140_1349632BD541',
+    'Label_73018A04_4E6E_F4AA_41BD_560BBAF3832B',
+    'Label_7316602C_4E69_74FA_41B0_7284F8EBFA04',
+    'Container_72F07872_4E67_B56E_41AF_74B31EEAE071',
+    'Button_750AB6F8_4E6A_FD5A_41B8_3B00F4A4F566',
+    'Button_705138BD_4E66_F5D5_41C7_67A1B6CC770D',
+    'Button_73A859D1_4E6F_77AA_41C2_D74B6095EB78'
+  ];
+
   const LEGACY_TEXT_FRAGMENTS = [
     'WELCOME', 'GERANIUM', 'LAGOON BEACH', 'CONTINUE WATCHING', 'OPEN VIRTUAL TOUR', 'INTERACTIVE VIRTUAL TOUR'
   ];
@@ -91,6 +101,12 @@
         try { root.set('watermark', false); } catch (e) {}
         try { root.set('academicWatermark', false); } catch (e) {}
       }
+      LEGACY_WELCOME_COMPONENT_IDS.forEach(id => {
+        try {
+          const component = root[id] || (typeof root.getById === 'function' ? root.getById(id) : null);
+          if (component && typeof component.set === 'function') component.set('visible', false);
+        } catch (e) {}
+      });
       (root.getByClassName('ThumbnailList') || []).forEach(c => { try { c.set('visible', false); } catch (e) {} });
       ['Container', 'Label', 'Button', 'Image', 'IconButton'].forEach(className => {
         (root.getByClassName(className) || []).forEach(component => {
@@ -107,13 +123,17 @@
   }
 
   function scrubWatermarkDOM() {
-    document.querySelectorAll('div, span').forEach(el => {
+    let audioPromptVisible = false;
+    document.querySelectorAll('div, span, p, button').forEach(el => {
       const text = (el.textContent || '').replace(/\s+/g, ' ').trim();
       if (/Created by:?\s*3dvista Academic/i.test(text) || /^3dvista Academic$/i.test(text)) {
         const target = el.closest('div') || el;
         target.style.display = 'none';
       }
+      if (/Enable audio\?/i.test(text)) audioPromptVisible = true;
     });
+    const host = document.getElementById('villa86-ui');
+    if (host) host.classList.toggle('has-audio-prompt', audioPromptVisible);
   }
 
   function triggerOriginal(id) {
